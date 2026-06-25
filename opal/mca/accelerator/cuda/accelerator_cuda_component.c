@@ -33,6 +33,12 @@
 #include "opal/util/show_help.h"
 #include "opal/sys/atomic.h"
 
+#include "accelerator_cuda_memtype_cache.h"
+
+/* Declaration for hooks init/fini from accelerator_cuda_memtype_hooks.c */
+extern void opal_accelerator_cuda_memtype_hooks_init(void);
+extern void opal_accelerator_cuda_memtype_hooks_fini(void);
+
 /* Define global variables, used in accelerator_cuda.c */
 CUstream opal_accelerator_cuda_memcpy_stream = NULL;
 opal_mutex_t opal_accelerator_cuda_stream_lock = {0};
@@ -193,6 +199,8 @@ static opal_accelerator_base_module_t* accelerator_cuda_init(void)
     }
 
     opal_accelerator_cuda_delayed_init();
+    opal_accelerator_cuda_memtype_cache_init();
+    opal_accelerator_cuda_memtype_hooks_init();
     return &opal_accelerator_cuda_module;
 }
 
@@ -214,5 +222,7 @@ static void accelerator_cuda_finalize(opal_accelerator_base_module_t* module)
 
     OBJ_DESTRUCT(&opal_accelerator_cuda_stream_lock);
     OBJ_DESTRUCT(&accelerator_cuda_init_lock);
+    opal_accelerator_cuda_memtype_hooks_fini();
+    opal_accelerator_cuda_memtype_cache_fini();
     return;
 }

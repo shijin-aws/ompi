@@ -19,6 +19,7 @@
 #include <cuda.h>
 
 #include "accelerator_cuda.h"
+#include "accelerator_cuda_memtype_cache.h"
 #include "opal/mca/accelerator/base/base.h"
 #include "opal/mca/rcache/rcache.h"
 #include "opal/util/show_help.h"
@@ -242,6 +243,23 @@ static int accelerator_cuda_get_primary_context(CUdevice dev_id, CUcontext *pctx
 
 static int accelerator_cuda_check_addr(const void *addr, int *dev_id, uint64_t *flags)
 {
+    /*
+     * Proactive memtype cache lookup. The cache is populated by CUDA
+     * alloc/free interception hooks, so known GPU allocations can be
+     * identified without calling into the CUDA driver.
+     */
+    if (NULL == addr || NULL == flags) {
+        return OPAL_ERR_BAD_PARAM;
+    }
+
+    *flags = 0;
+    if (opal_accelerator_cuda_memtype_cache_lookup(addr, dev_id, flags)) {
+        /* Cache hit — this is a known device pointer */
+        opal_accelerator_cuda_delayed_init();
+        return 1;
+    }
+
+    /* Cache miss — fall through to CUDA driver query */
     CUresult result;
     int is_vmm = 0;
     int is_mpool_ptr = 0;
@@ -253,12 +271,6 @@ static int accelerator_cuda_check_addr(const void *addr, int *dev_id, uint64_t *
     CUdeviceptr dbuf = (CUdeviceptr) addr;
     CUcontext ctx = NULL, mem_ctx = NULL;
     *dev_id = MCA_ACCELERATOR_NO_DEVICE_ID;
-
-    if (NULL == addr || NULL == flags) {
-        return OPAL_ERR_BAD_PARAM;
-    }
-
-    *flags = 0;
 
     is_vmm = accelerator_cuda_check_vmm(dbuf, &vmm_mem_type, &vmm_dev_id);
     is_mpool_ptr = accelerator_cuda_check_mpool(dbuf, &mpool_mem_type, &mpool_dev_id);

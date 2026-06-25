@@ -15,8 +15,11 @@ AM_CPPFLAGS = $(common_cuda_CPPFLAGS)
 dist_opaldata_DATA = help-accelerator-cuda.txt
 sources = \
         accelerator_cuda.h \
+        accelerator_cuda_memtype_cache.h \
         accelerator_cuda_component.c \
-        accelerator_cuda.c
+        accelerator_cuda.c \
+        accelerator_cuda_memtype_cache.c \
+        accelerator_cuda_memtype_hooks.c
 
 # Make the output library in this directory, and name it either
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
@@ -36,9 +39,9 @@ mcacomponent_LTLIBRARIES = $(component_install)
 mca_accelerator_cuda_la_SOURCES = $(sources)
 mca_accelerator_cuda_la_LDFLAGS = -module -avoid-version $(accelerator_cuda_LDFLAGS)
 mca_accelerator_cuda_la_LIBADD = $(top_builddir)/opal/lib@OPAL_LIB_NAME@.la \
-        $(accelerator_cuda_LIBS)
+        $(accelerator_cuda_LIBS) -ldl
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_accelerator_cuda_la_SOURCES =$(sources)
 libmca_accelerator_cuda_la_LDFLAGS = -module -avoid-version $(accelerator_cuda_LDFLAGS)
-libmca_accelerator_cuda_la_LIBADD = $(accelerator_cuda_LIBS)
+libmca_accelerator_cuda_la_LIBADD = $(accelerator_cuda_LIBS) -ldl
